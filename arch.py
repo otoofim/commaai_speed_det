@@ -7,25 +7,50 @@ import operator
 
 
 
-
-
 class nvidia(nn.Module):
 
-    def __init__(self):
+    def __init__(self, input_channel, input_dim):
         super().__init__()
 
         self.conv = nn.Sequential(OrderedDict([
-                    ('conv1', nn.Conv2d(3, 24, 5, 2)),
+                    ('conv1', nn.Conv2d(input_channel, 24, 5, 2)),
+                    ('elu1', nn.ELU()),
                     ('conv2', nn.Conv2d(24, 36, 5, 2)),
-                    ('conv3', nn.Conv2d(36, 48, 3, 1)),
+                    ('elu2', nn.ELU()),
+                    ('conv3', nn.Conv2d(36, 48, 5, 2)),
+                    ('elu3', nn.ELU()),
+                    ('dropout', nn.Dropout()),
                     ('conv4', nn.Conv2d(48, 64, 3, 1)),
+                    ('elu4', nn.ELU()),
                     ('conv5', nn.Conv2d(64, 64, 3, 1)),
+                    ('elu5', nn.ELU()),
+                    ('flatten', nn.Flatten()),
                 ]))
+
+        num_features_before_fcnn = functools.reduce(operator.mul, list(self.conv(torch.rand(1, *(input_channel, input_dim[0], input_dim[1]))).shape))
+
+        self.linear = nn.Sequential(OrderedDict([
+                    ('affine1', nn.Linear(num_features_before_fcnn, 100)),
+                    ('elu6', nn.ELU()),
+                    ('affine2', nn.Linear(100, 50)),
+                    ('elu7', nn.ELU()),
+                    ('affine3', nn.Linear(50, 10)),
+                    ('elu8', nn.ELU()),
+                    ('affine4', nn.Linear(10, 1)),
+                ]))
+
+
+        for layer in self.modules():
+            if isinstance(layer, nn.Conv2d):
+                nn.init.kaiming_normal_(layer.weight.data, mode='fan_in')
+                if layer.bias is not None:
+                    layer.bias.data.zero_()
 
     def forward(self, x):
         out = self.conv(x)
-        print(out.shape)
-        #return out
+        out = self.linear(out)
+        return out
+
 
 class MyConv(nn.Module):
 

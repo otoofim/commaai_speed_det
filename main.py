@@ -18,7 +18,7 @@ def main():
                         help = 'num of epochs')
 
 
-    parser.add_argument('--learning_rate', '-lr', default = .01, type = float,
+    parser.add_argument('--learning_rate', '-lr', default = .0001, type = float,
                         help = 'learning rate')
 
     #**********

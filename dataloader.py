@@ -78,26 +78,82 @@ class commaai(Dataset):
 
 
 
+    # def __getitem__(self, idx):
+    #
+    #     if torch.is_tensor(idx):
+    #         idx = idx.tolist()
+    #
+    #     base_img = Image.open(self.base_add + "/frames_tra/" + self.samples[idx])
+    #     label_img = self.labels[idx]
+    #
+    #
+    #     if self.transform_in:
+    #         base_img = self.transform_in(base_img)
+    #
+    #     #img = torch.cat([base_img__1, base_img, base_img_1], dim=0)
+    #
+    #     sample = {'image': base_img, 'label': float(label_img)}
+    #
+    #     return sample
+
 
     def __getitem__(self, idx):
 
         if torch.is_tensor(idx):
             idx = idx.tolist()
 
-        base_img = Image.open(self.base_add + "/frames_tra/" + self.samples[idx])
+
+        if idx == 0:
+            idx_1 == 0
+        else:
+            idx_1 = idx - 1
+
+        #base_img = Image.open(self.base_add + "/frames_tra/" + self.samples[idx])
+        base_img = cv2.imread(self.base_add + "/frames_tra/" + self.samples[idx])
+        base_img_br = self.change_brightness(base_img, 0.2 + np.random.uniform())
         label_img = self.labels[idx]
 
 
+        #base_img__1 = Image.open(self.base_add + "/frames_tra/" + self.samples[idx_1])
+        base_img__1 = cv2.imread(self.base_add + "/frames_tra/" + self.samples[idx_1])
+        base_img_br__1 = self.change_brightness(base_img__1, 0.2 + np.random.uniform())
+        base_img__1 = self.labels[idx_1]
+
+
+        optical_rgb = self.calc_dense_optical_flow(base_img_br__1, base_img_br)
+
         if self.transform_in:
-            base_img = self.transform_in(base_img)
+            optical_rgb = self.transform_in(optical_rgb)
 
         #img = torch.cat([base_img__1, base_img, base_img_1], dim=0)
 
-        sample = {'image': base_img, 'label': float(label_img)}
+        sample = {'image': optical_rgb, 'label': float(label_img)}
 
         return sample
 
 
+
+    def change_brightness(self, image, bright_factor):
+
+        """augment brightness"""
+        hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+        hsv_image[:,:,2] = hsv_image[:,:,2] * bright_factor
+        image_rgb = cv2.cvtColor(hsv_image, cv2.COLOR_HSV2BGR)
+        return image_rgb
+
+
+    def calc_dense_optical_flow(self, prev_frame, curr_frame):
+
+        prev_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
+        curr_gray = cv2.cvtColor(curr_frame, cv2.COLOR_BGR2GRAY)
+        hsv = np.zeros_like(prev_frame)
+        hsv[:,:,1] = 255
+        flow = cv2.calcOpticalFlowFarneback(prev_gray, curr_gray, None, 0.5, 1, 15, 2, 5, 1.3, 0)
+        mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
+        hsv[:,:,0] = ang * (180/ np.pi / 2)
+        hsv[:,:,2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
+        rgb_flow = cv2.cvtColor(hsv,cv2.COLOR_HSV2RGB)
+        return rgb_flow
 
     def dense_optical_flow(self, method, old_frame, new_frame, params=[], to_gray=False):
 

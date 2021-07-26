@@ -70,7 +70,7 @@ def train(batch_size, epoch, learning_rate, run_name, data_path, project_name, c
 
     preprocess_in = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        #transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         transforms.Resize((img_w, img_h)),
         #Resnet50()
     ])
@@ -86,7 +86,7 @@ def train(batch_size, epoch, learning_rate, run_name, data_path, project_name, c
 
     #model = half_UNet(out_channels = 3)
     #model = MyConv(img_w)
-    model = nvidia()
+    model = nvidia(3, (img_w, img_h))
     if continue_tra:
         model.load_state_dict(torch.load(model_add)['model_state_dict'])
         print("model state dict loaded...")
@@ -99,12 +99,17 @@ def train(batch_size, epoch, learning_rate, run_name, data_path, project_name, c
     val_loader = DataLoader(dataset = val, batch_size = wandb.config.batch_size, shuffle = False)
 
 
-    optimizer = optim.SGD(model.parameters(), lr = wandb.config.lr, momentum = wandb.config.momentum)
-    if continue_tra:
-        optimizer.load_state_dict(torch.load(model_add)['optimizer_state_dict'])
-        print("optimizer state dict loaded...")
+    criterion = torch.nn.MSELoss()
+    optimizer = torch.optim.Adam(model.parameters(), lr = wandb.config.lr)
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.1, patience=0, threshold=0.2, threshold_mode='abs', min_lr=1e-8)
 
-    criterion = torch.nn.MSELoss(reduction='mean')
+
+    # optimizer = optim.SGD(model.parameters(), lr = wandb.config.lr, momentum = wandb.config.momentum)
+    # if continue_tra:
+    #     optimizer.load_state_dict(torch.load(model_add)['optimizer_state_dict'])
+    #     print("optimizer state dict loaded...")
+    #
+    # criterion = torch.nn.MSELoss(reduction='mean')
 
 
     tr_loss = 0.0
@@ -179,6 +184,7 @@ def train(batch_size, epoch, learning_rate, run_name, data_path, project_name, c
 
 
                         val_loss /= len(val_loader)
+                        scheduler.step(val_loss)
                         wandb.log({"val_loss": val_loss, "epoch": epoch + 1})
                         if val_loss < best_val:
 
