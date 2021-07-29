@@ -10,7 +10,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     #512
-    parser.add_argument('--batch_size', '-bs', default = 725, type = int,
+    parser.add_argument('--batch_size', '-bs', default = 128, type = int,
                         help = 'mini batches size')
 
 

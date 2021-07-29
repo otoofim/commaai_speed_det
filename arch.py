@@ -10,7 +10,7 @@ import operator
 class nvidia(nn.Module):
 
     def __init__(self, input_channel, input_dim):
-        super().__init__()
+        super(nvidia, self).__init__()
 
         self.conv = nn.Sequential(OrderedDict([
                     ('conv1', nn.Conv2d(input_channel, 24, 5, 2)),
@@ -24,7 +24,6 @@ class nvidia(nn.Module):
                     ('elu4', nn.ELU()),
                     ('conv5', nn.Conv2d(64, 64, 3, 1)),
                     ('elu5', nn.ELU()),
-                    ('flatten', nn.Flatten()),
                 ]))
 
         num_features_before_fcnn = functools.reduce(operator.mul, list(self.conv(torch.rand(1, *(input_channel, input_dim[0], input_dim[1]))).shape))
@@ -39,17 +38,20 @@ class nvidia(nn.Module):
                     ('affine4', nn.Linear(10, 1)),
                 ]))
 
-
-        for layer in self.modules():
-            if isinstance(layer, nn.Conv2d):
-                nn.init.kaiming_normal_(layer.weight.data, mode='fan_in')
-                if layer.bias is not None:
-                    layer.bias.data.zero_()
-
     def forward(self, x):
+
         out = self.conv(x)
-        out = self.linear(out)
-        return out
+        feature = functools.reduce(operator.mul, out.shape[1:], 1)
+        out = self.linear(out.view(-1, feature))
+        return out.squeeze(1)
+
+    @staticmethod
+    def init_weights(layer):
+        if isinstance(layer, nn.Conv2d):
+            nn.init.kaiming_normal_(layer.weight.data, mode = 'fan_in')
+            if layer.bias is not None:
+                layer.bias.data.zero_()
+
 
 
 class MyConv(nn.Module):
@@ -216,33 +218,33 @@ class half_UNet(nn.Module):
         super(half_UNet, self).__init__()
 
         features = init_features
-        self.encoder1 = half_UNet._block(in_channels, features, name="enc1")
-        self.pool1 = nn.MaxPool2d(kernel_size=2, stride=2)
-        self.encoder2 = half_UNet._block(features, features * 2, name="enc2")
-        self.pool2 = nn.MaxPool2d(kernel_size=2, stride=2)
-        self.encoder3 = half_UNet._block(features * 2, features * 4, name="enc3")
-        self.pool3 = nn.MaxPool2d(kernel_size=2, stride=2)
-        self.encoder4 = half_UNet._block(features * 4, features * 8, name="enc4")
-        self.pool4 = nn.MaxPool2d(kernel_size=2, stride=2)
+        self.bott = nn.Sequential(
+            half_UNet._block(in_channels, features, name="enc1"),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            half_UNet._block(features, features * 2, name="enc2"),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            half_UNet._block(features * 2, features * 4, name="enc3"),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            half_UNet._block(features * 4, features * 8, name="enc4"),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            half_UNet._block(features * 8, features * 16, name="bottleneck"),
+            nn.Flatten(),
+        )
 
-        self.bottleneck = half_UNet._block(features * 8, features * 16, name="bottleneck")
-        self.flatten = nn.Flatten()
-        self.affine1 = nn.Linear(614400, 512)
-        self.relu_aff = nn.ReLU()
-        self.affine2 = nn.Linear(512, 1)
+        num_features_before_fcnn = functools.reduce(operator.mul, list(self.bott(torch.rand(1, *(3, 200, 66))).shape))
 
+        self.linear = nn.Sequential(
+            nn.Linear(num_features_before_fcnn, 512),
+            nn.ReLU(),
+            nn.Linear(512, 1)
+        )
 
     def forward(self, x):
-        enc1 = self.encoder1(x)
-        enc2 = self.encoder2(self.pool1(enc1))
-        enc3 = self.encoder3(self.pool2(enc2))
-        enc4 = self.encoder4(self.pool3(enc3))
 
-        bottleneck = self.flatten(self.bottleneck(self.pool4(enc4)))
-        print(bottleneck.shape)
-        affi1 = self.relu_aff(self.affine1(bottleneck))
-        out = self.affine2(affi1)
-        return out
+        x = self.bott(x)
+        feature = functools.reduce(operator.mul, x.shape[1:], 1)
+        out = self.linear(x.view(-1, feature))
+        return out.squeeze(1)
 
 
     @staticmethod

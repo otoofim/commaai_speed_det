@@ -84,16 +84,19 @@ def train(batch_size, epoch, learning_rate, run_name, data_path, project_name, c
         print("Running on the CPU")
 
 
-    #model = half_UNet(out_channels = 3)
+    model = half_UNet(out_channels = 3)
     #model = MyConv(img_w)
-    model = nvidia(3, (img_w, img_h))
+    #model = nvidia(3, (img_w, img_h)).apply(nvidia.init_weights)
+    #model = mynvidia(3, (img_w, img_h))
+    #model = NVIDIA(3)
     if continue_tra:
         model.load_state_dict(torch.load(model_add)['model_state_dict'])
         print("model state dict loaded...")
 
     model = model.to(device)
 
-    tr_loader = commaai(data_path, preprocess_in)
+    #tr_loader = commaai(data_path, preprocess_in)
+    tr_loader = winterdata("../signals/data/frames", preprocess_in)
     tra, val = random_split(tr_loader, [int(len(tr_loader) * 0.8), int(len(tr_loader) * 0.2)])
     train_loader = DataLoader(dataset = tra, batch_size = wandb.config.batch_size, shuffle = False)
     val_loader = DataLoader(dataset = val, batch_size = wandb.config.batch_size, shuffle = False)
