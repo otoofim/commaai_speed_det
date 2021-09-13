@@ -11,6 +11,8 @@ __pycache__/
 build/
 wandb/
 data/
+graphs/
+output/
 checkpoints/
 develop-eggs/
 outputs/

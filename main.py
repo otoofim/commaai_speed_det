@@ -38,6 +38,14 @@ def main():
                         default = False, type = bool,
                         help = 'train a model for more epochs. you also need to set the model path.')
 
+    parser.add_argument('--arch_name', '-an',
+                        default = "unet", type = str,
+                        help = 'Name of architecture')
+
+    parser.add_argument('--dataset_name', '-dn',
+                        default = "winter", type = str,
+                        help = 'Name of dataset')
+
     parser.add_argument('--model_path', '-mp',
                         default = "./checkpoints/test/best.pth", type = str,
                         help = 'The path to the model is going to be trained.')
@@ -49,7 +57,7 @@ def main():
 
     args = parser.parse_args()
 
-    train(args.batch_size, args.epoch, args.learning_rate, args.run_name, args.data_path, args.project_name, args.continue_tra, args.model_path, args.wandb_id)
+    train(args.batch_size, args.epoch, args.learning_rate, args.run_name, args.data_path, args.project_name, args.arch_name, args.dataset_name, args.continue_tra, args.model_path, args.wandb_id,)
 
 
 

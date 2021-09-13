@@ -38,7 +38,7 @@ class Resnet50(object):
             return out.squeeze()
 
 
-def train(batch_size, epoch, learning_rate, run_name, data_path, project_name, continue_tra = False, model_add = None, wandb_id = None):
+def train(batch_size, epoch, learning_rate, run_name, data_path, project_name, arch_name, dataset_name, continue_tra = False, model_add = None, wandb_id = None):
 
 
     hyperparameter_defaults = {
@@ -46,8 +46,8 @@ def train(batch_size, epoch, learning_rate, run_name, data_path, project_name, c
         "lr": learning_rate,
         "epochs": epoch,
         "momentum": 0.9,
-        "architecture": "stacked_conv",
-        "dataset": "commaai",
+        "architecture": arch_name,
+        "dataset": dataset_name,
         "run": run_name
     }
 
@@ -64,14 +64,14 @@ def train(batch_size, epoch, learning_rate, run_name, data_path, project_name, c
 
 
     val_every = 5
-    img_w = 200
-    img_h = 66
+    img_w = 256
+    img_h = 256
 
 
     preprocess_in = transforms.Compose([
         transforms.ToTensor(),
         #transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        transforms.Resize((img_w, img_h)),
+        transforms.Resize((img_h, img_w)),
         #Resnet50()
     ])
 
@@ -84,7 +84,7 @@ def train(batch_size, epoch, learning_rate, run_name, data_path, project_name, c
         print("Running on the CPU")
 
 
-    model = half_UNet(out_channels = 3)
+    model = half_UNet((img_h, img_w), out_channels = 3)
     #model = MyConv(img_w)
     #model = nvidia(3, (img_w, img_h)).apply(nvidia.init_weights)
     #model = mynvidia(3, (img_w, img_h))
@@ -96,7 +96,7 @@ def train(batch_size, epoch, learning_rate, run_name, data_path, project_name, c
     model = model.to(device)
 
     #tr_loader = commaai(data_path, preprocess_in)
-    tr_loader = winterdata("../signals/data/frames", preprocess_in)
+    tr_loader = winterdata("../signals/data/signal dataset", preprocess_in)
     tra, val = random_split(tr_loader, [int(len(tr_loader) * 0.8), int(len(tr_loader) * 0.2)])
     train_loader = DataLoader(dataset = tra, batch_size = wandb.config.batch_size, shuffle = False)
     val_loader = DataLoader(dataset = val, batch_size = wandb.config.batch_size, shuffle = False)

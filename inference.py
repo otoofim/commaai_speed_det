@@ -1,5 +1,5 @@
 import torch
-from unet import *
+from arch import *
 from os.path import isfile, join
 import glob
 import argparse
@@ -11,6 +11,7 @@ from PIL import Image
 from torchvision import transforms
 import numpy as np
 from torchvision.utils import save_image
+import cv2
 
 
 
@@ -23,7 +24,7 @@ def main():
                     help = 'Path to images are required to segment.')
     parser.add_argument('--output_add', '-o', default = './outputs/23', type = str,
                     help = 'Path to the folder that outpust are going to be stored.')
-    parser.add_argument('--model_add', '-m', default = "/home/lunet/wsmo6/SemanticSegmentation/checkpoints/new_gpu/best.pth", type = str,
+    parser.add_argument('--model_add', '-m', default = "./checkpoints/speed_unet/best.pth", type = str,
                     help = 'Path to the model.')
 
     args = parser.parse_args()
@@ -33,20 +34,20 @@ def main():
 
 def inference_unet(main_dir, output_add, model_add):
 
-    img_w = 224
-    img_h = 224
+    img_w = 200
+    img_h = 66
 
     preprocess_in = transforms.Compose([
         transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        #transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
         transforms.Resize((img_w, img_h))
     ])
 
     files = glob.glob(join(main_dir, "*.jpg"))
     files.sort(key = lambda f: int(re.sub('\D', '', f)))
-    files = files[19800:]
+    #files = files[:-4]
 
-    model = UNet(out_channels = 3)
+    model = half_UNet(out_channels = 3)
     model.load_state_dict(torch.load(model_add)['model_state_dict'])
     model.eval()
 
@@ -61,19 +62,78 @@ def inference_unet(main_dir, output_add, model_add):
     start = torch.cuda.Event(enable_timing=True)
     end = torch.cuda.Event(enable_timing=True)
 
-    for path in files:
+    f = open("./output/speed_unet_commaai_23pred.txt", "a")
 
-        base_img = Image.open(path)
-        pre_base_img = preprocess_in(base_img)
+    for i, path in enumerate(files):
+
+
+        if i == 0:
+            i_1 = 0
+        else:
+            i_1 = i -1
+
+        img = load_data(files[i_1], files[i], preprocess_in)
+
         start.record()
-        output = model((pre_base_img.unsqueeze(0)).to(device))
+        output = model(img.to(device))
         end.record()
         torch.cuda.synchronize()
-        print(start.elapsed_time(end))  # milliseconds
-        save_image(output[0], output_add + "/" + path.split("/")[-1])
-        #output = (((output.squeeze(0).detach().cpu().numpy()) * 255).astype(np.uint8)).reshape((img_h, img_w, 3))
-        #output = Image.fromarray(output)
-        #output.save(output_add + "/" + path.split("/")[-1])
+        #print(start.elapsed_time(end))  # milliseconds
+        f.write(str(output.detach().cpu().numpy()[0]) + "\n")
+
+
+    f.close()
+
+
+def load_data(image1, image2, transform_in):
+
+    brightness_factor = 0.2 + np.random.uniform()
+
+    base_img = cv2.imread(image2)
+    base_img = cv2.resize(base_img, (200,66), interpolation = cv2.INTER_AREA)
+    base_img_br = change_brightness(base_img, brightness_factor)
+
+    base_img__1 = cv2.imread(image1)
+    base_img__1 = cv2.resize(base_img__1, (200,66), interpolation = cv2.INTER_AREA)
+    base_img_br__1 = change_brightness(base_img__1, brightness_factor)
+
+    optical_rgb = calc_dense_optical_flow(base_img_br__1, base_img_br)
+    if transform_in:
+        optical_rgb = transform_in(optical_rgb)
+
+
+    return optical_rgb.unsqueeze(0)
+
+
+
+def change_brightness(image, bright_factor):
+
+    """augment brightness"""
+    hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    hsv_image[:,:,2] = hsv_image[:,:,2] * bright_factor
+    image_rgb = cv2.cvtColor(hsv_image, cv2.COLOR_HSV2BGR)
+    return image_rgb
+
+
+def calc_dense_optical_flow(prev_frame, curr_frame):
+
+    prev_gray = cv2.cvtColor(prev_frame, cv2.COLOR_BGR2GRAY)
+    curr_gray = cv2.cvtColor(curr_frame, cv2.COLOR_BGR2GRAY)
+    hsv = np.zeros_like(prev_frame)
+    hsv[:,:,1] = 255
+    flow = cv2.calcOpticalFlowFarneback(prev_gray, curr_gray, None, 0.5, 1, 15, 2, 5, 1.3, 0)
+    mag, ang = cv2.cartToPolar(flow[..., 0], flow[..., 1])
+    hsv[:,:,0] = ang * (180/ np.pi / 2)
+    hsv[:,:,2] = cv2.normalize(mag, None, 0, 255, cv2.NORM_MINMAX)
+    rgb_flow = cv2.cvtColor(hsv,cv2.COLOR_HSV2RGB)
+    return rgb_flow
+
+
+
+
+
+
+
 
 
 

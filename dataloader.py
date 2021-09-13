@@ -17,15 +17,15 @@ class winterdata(Dataset):
 
         self.base_add = root_dir
 
-        self.samples_23 = next(os.walk(root_dir + "/23"))[2]
-        self.samples_23.sort(key=lambda f: int(re.sub('\D', '', f)))
+        # self.samples_23 = next(os.walk(root_dir + "/23"))[2]
+        # self.samples_23.sort(key=lambda f: int(re.sub('\D', '', f)))
+        #
+        # self.samples_25 = next(os.walk(root_dir + "/25"))[2]
+        # self.samples_25.sort(key=lambda f: int(re.sub('\D', '', f)))
+        # self.samples_25 = self.samples_25[:-4]
 
-        self.samples_25 = next(os.walk(root_dir + "/25"))[2]
-        self.samples_25.sort(key=lambda f: int(re.sub('\D', '', f)))
-        self.samples_25 = self.samples_25[:-4]
-
-        self.labels_23 = open(root_dir + "/23times_signals.txt").readlines()
-        self.labels_25 = open(root_dir + "/25times_signals.txt").readlines()[:-4]
+        self.labels_23 = open(root_dir + "/veh_yaw_latt_23.txt").readlines()
+        self.labels_25 = open(root_dir + "/veh_yaw_latt_25.txt").readlines()[:-4]
 
         self.transform_in = transform_in
 
@@ -47,7 +47,7 @@ class winterdata(Dataset):
 
             idx = idx - len(self.labels_23)
             idx_1 = idx_1 - len(self.labels_23)
-            return self.load_data("25", self.samples_25, self.labels_25, idx, idx_1)
+            return self.load_data("25", self.labels_23, idx, idx_1)
 
         else:
 
@@ -56,22 +56,22 @@ class winterdata(Dataset):
             else:
                 idx_1 = idx - 1
 
-            return self.load_data("23", self.samples_23, self.labels_23, idx, idx_1)
+            return self.load_data("23", self.labels_23, idx, idx_1)
 
 
-    def load_data(self, file, samples, labels, idx, idx_1):
+    def load_data(self, file, samples, idx, idx_1):
 
         brightness_factor = 0.2 + np.random.uniform()
-
-        base_img = cv2.imread(self.base_add + "/" + file + "/" + samples[idx])
+        base_img = cv2.imread(samples[idx].split(',')[0].strip())
         base_img = cv2.resize(base_img, (200,66), interpolation = cv2.INTER_AREA)
         base_img_br = self.change_brightness(base_img, brightness_factor)
-        label_img = labels[idx]
+        #label_img = labels[idx].split(',')[1:4]
+        label_img = [abs(int(float(i.strip()))) for i in samples[idx].split(',')[1:4]]
 
-        base_img__1 = cv2.imread(self.base_add + "/" + file + "/" + samples[idx_1])
+        base_img__1 = cv2.imread(samples[idx_1].split(',')[0].strip())
         base_img__1 = cv2.resize(base_img__1, (200,66), interpolation = cv2.INTER_AREA)
         base_img_br__1 = self.change_brightness(base_img__1, brightness_factor)
-        base_img__1 = labels[idx_1]
+        base_img__1 = [abs(int(float(i.strip()))) for i in samples[idx_1].split(',')[1:4]]
 
         optical_rgb = self.calc_dense_optical_flow(base_img_br__1, base_img_br)
         if self.transform_in:
@@ -79,7 +79,7 @@ class winterdata(Dataset):
 
         #img = torch.cat([base_img__1, base_img, base_img_1], dim=0)
 
-        sample = {'image': optical_rgb, 'label': abs(int(float(label_img)))}
+        sample = {'image': optical_rgb, 'label': np.array(label_img)}
 
         return sample
 

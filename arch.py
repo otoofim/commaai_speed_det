@@ -214,7 +214,7 @@ class LinearModel(nn.Module):
 
 class half_UNet(nn.Module):
 
-    def __init__(self, in_channels=3, out_channels=1, init_features=32):
+    def __init__(self, input_dim, in_channels=3, out_channels=1, init_features=32):
         super(half_UNet, self).__init__()
 
         features = init_features
@@ -231,12 +231,12 @@ class half_UNet(nn.Module):
             nn.Flatten(),
         )
 
-        num_features_before_fcnn = functools.reduce(operator.mul, list(self.bott(torch.rand(1, *(3, 200, 66))).shape))
+        num_features_before_fcnn = functools.reduce(operator.mul, list(self.bott(torch.rand(1, *(in_channels, input_dim[0], input_dim[1]))).shape))
 
         self.linear = nn.Sequential(
             nn.Linear(num_features_before_fcnn, 512),
             nn.ReLU(),
-            nn.Linear(512, 1)
+            nn.Linear(512, 3)
         )
 
     def forward(self, x):

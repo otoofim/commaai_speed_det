@@ -1,0 +1,3 @@
+
+conda activate torch
+python main.py -rn "winter_veh_latt_yaw" -pn "signal pred" -an "half_unet" -dn "winter" -bs 64
