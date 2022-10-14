@@ -38,28 +38,29 @@ class Resnet50(object):
             return out.squeeze()
 
 
-def train(batch_size, epoch, learning_rate, run_name, data_path, project_name, arch_name, dataset_name, continue_tra = False, model_add = None, wandb_id = None):
+#def train(batch_size, epoch, learning_rate, run_name, data_path, project_name, arch_name, dataset_name, continue_tra = False, model_add = None, wandb_id = None):
+def train(**kwargs):
 
 
     hyperparameter_defaults = {
-        "batch_size": batch_size,
-        "lr": learning_rate,
-        "epochs": epoch,
+        "batch_size": kwargs["batch_size"],
+        "lr": kwargs["learning_rate"],
+        "epochs": kwargs["epoch"],
         "momentum": 0.9,
-        "architecture": arch_name,
-        "dataset": dataset_name,
-        "run": run_name
+        "architecture": kwargs["arch_name"],
+        "dataset": kwargs["dataset_name"],
+        "run": kwargs["run_name"]
     }
 
     base_add = os.getcwd()
 
 
-    if continue_tra:
-        wandb.init(config = hyperparameter_defaults, project = project_name, entity = 'moh1371',
-                    name = hyperparameter_defaults['run'], resume = "must", id = wandb_id)
+    if kwargs["continue_tra"]:
+        wandb.init(config = hyperparameter_defaults, project = kwargs["project_name"], entity = 'moh1371',
+                    name = hyperparameter_defaults['run'], resume = "must", id = kwargs["wandb_id"])
         print("wandb resumed...")
     else:
-        wandb.init(config = hyperparameter_defaults, project = project_name, entity = 'moh1371',
+        wandb.init(config = hyperparameter_defaults, project = kwargs["project_name"], entity = 'moh1371',
                     name = hyperparameter_defaults['run'], resume = "allow")
 
 
@@ -84,13 +85,13 @@ def train(batch_size, epoch, learning_rate, run_name, data_path, project_name, a
         print("Running on the CPU")
 
 
-    model = half_UNet((img_h, img_w), out_channels = 3)
+    model = half_UNet((img_h, img_w), 3, out_channels = 3)
     #model = MyConv(img_w)
     #model = nvidia(3, (img_w, img_h)).apply(nvidia.init_weights)
     #model = mynvidia(3, (img_w, img_h))
     #model = NVIDIA(3)
-    if continue_tra:
-        model.load_state_dict(torch.load(model_add)['model_state_dict'])
+    if kwargs["continue_tra"]:
+        model.load_state_dict(torch.load(kwargs["model_add"])['model_state_dict'])
         print("model state dict loaded...")
 
     model = model.to(device)
@@ -108,8 +109,8 @@ def train(batch_size, epoch, learning_rate, run_name, data_path, project_name, a
 
 
     # optimizer = optim.SGD(model.parameters(), lr = wandb.config.lr, momentum = wandb.config.momentum)
-    # if continue_tra:
-    #     optimizer.load_state_dict(torch.load(model_add)['optimizer_state_dict'])
+    # if kwargs["continue_tra"]:
+    #     optimizer.load_state_dict(torch.load(kwargs["model_add"])['optimizer_state_dict'])
     #     print("optimizer state dict loaded...")
     #
     # criterion = torch.nn.MSELoss(reduction='mean')
@@ -123,9 +124,9 @@ def train(batch_size, epoch, learning_rate, run_name, data_path, project_name, a
     start_epoch = 0
     end_epoch = wandb.config.epochs
 
-    if continue_tra:
-        start_epoch = torch.load(model_add)['epoch'] + 1
-        end_epoch = torch.load(model_add)['epoch'] + 1 + int(wandb.config.epochs)
+    if kwargs["continue_tra"]:
+        start_epoch = torch.load(kwargs["model_add"])['epoch'] + 1
+        end_epoch = torch.load(kwargs["model_add"])['epoch'] + 1 + int(wandb.config.epochs)
 
 
     with tqdm(range(start_epoch, end_epoch), unit="epoch", leave = True, position = 0) as epobar:

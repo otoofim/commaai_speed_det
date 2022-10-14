@@ -57,7 +57,11 @@ def main():
 
     args = parser.parse_args()
 
-    train(args.batch_size, args.epoch, args.learning_rate, args.run_name, args.data_path, args.project_name, args.arch_name, args.dataset_name, args.continue_tra, args.model_path, args.wandb_id,)
+    args = {"batch_size":args.batch_size, "epoch":args.epoch, "learning_rate":args.learning_rate, "run_name":args.run_name, "data_path":args.data_path, "project_name":args.project_name, "arch_name":args.arch_name, "dataset_name":args.dataset_name, "continue_tra":args.continue_tra, "model_path":args.model_path, "wandb_id":args.wandb_id}
+
+
+    #train(args.batch_size, args.epoch, args.learning_rate, args.run_name, args.data_path, args.project_name, args.arch_name, args.dataset_name, args.continue_tra, args.model_path, args.wandb_id,)
+    train(args)
 
 
 

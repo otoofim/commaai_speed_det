@@ -214,7 +214,7 @@ class LinearModel(nn.Module):
 
 class half_UNet(nn.Module):
 
-    def __init__(self, input_dim, in_channels=3, out_channels=1, init_features=32):
+    def __init__(self, input_dim, output_dim, in_channels=3, out_channels=1, init_features=32):
         super(half_UNet, self).__init__()
 
         features = init_features
@@ -236,7 +236,7 @@ class half_UNet(nn.Module):
         self.linear = nn.Sequential(
             nn.Linear(num_features_before_fcnn, 512),
             nn.ReLU(),
-            nn.Linear(512, 3)
+            nn.Linear(512, output_dim)
         )
 
     def forward(self, x):

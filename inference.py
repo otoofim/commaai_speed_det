@@ -20,11 +20,11 @@ def main():
 
     parser = argparse.ArgumentParser()
 
-    parser.add_argument('--images_add', '-i', default = '../signals/data/frames/23', type = str,
+    parser.add_argument('--images_add', '-i', default = '../signals/data/signal dataset/veh_yaw_latt_25.txt', type = str,
                     help = 'Path to images are required to segment.')
-    parser.add_argument('--output_add', '-o', default = './outputs/23', type = str,
+    parser.add_argument('--output_add', '-o', default = './output/sp_yaw_latt_winter_25pred.txt', type = str,
                     help = 'Path to the folder that outpust are going to be stored.')
-    parser.add_argument('--model_add', '-m', default = "./checkpoints/speed_unet/best.pth", type = str,
+    parser.add_argument('--model_add', '-m', default = "./checkpoints/winter_veh_latt_yaw/best.pth", type = str,
                     help = 'Path to the model.')
 
     args = parser.parse_args()
@@ -34,8 +34,8 @@ def main():
 
 def inference_unet(main_dir, output_add, model_add):
 
-    img_w = 200
-    img_h = 66
+    img_w = 256
+    img_h = 256
 
     preprocess_in = transforms.Compose([
         transforms.ToTensor(),
@@ -43,11 +43,15 @@ def inference_unet(main_dir, output_add, model_add):
         transforms.Resize((img_w, img_h))
     ])
 
-    files = glob.glob(join(main_dir, "*.jpg"))
-    files.sort(key = lambda f: int(re.sub('\D', '', f)))
+    #files = glob.glob(join(main_dir, "*.jpg"))
+    #files.sort(key = lambda f: int(re.sub('\D', '', f)))
     #files = files[:-4]
+    files = open(main_dir).readlines()[1:-4]
+    files = [line.split(',')[0].strip() for line in files]
 
-    model = half_UNet(out_channels = 3)
+
+    #model =MyConv(img_w)
+    model = half_UNet((img_h, img_w), 3,  out_channels = 3)
     model.load_state_dict(torch.load(model_add)['model_state_dict'])
     model.eval()
 
@@ -58,11 +62,12 @@ def inference_unet(main_dir, output_add, model_add):
         device = torch.device("cpu")
         print("Running on the CPU")
 
+
     model = model.to(device)
     start = torch.cuda.Event(enable_timing=True)
     end = torch.cuda.Event(enable_timing=True)
 
-    f = open("./output/speed_unet_commaai_23pred.txt", "a")
+    f = open(output_add, "w")
 
     for i, path in enumerate(files):
 
@@ -78,8 +83,15 @@ def inference_unet(main_dir, output_add, model_add):
         output = model(img.to(device))
         end.record()
         torch.cuda.synchronize()
-        #print(start.elapsed_time(end))  # milliseconds
-        f.write(str(output.detach().cpu().numpy()[0]) + "\n")
+        print(start.elapsed_time(end))  # milliseconds
+        ext_output = output.detach().cpu().numpy()[0]
+
+        if isinstance(ext_output, np.ndarray):
+            for out in ext_output:
+                f.write(str(out)  + ",")
+        else:
+            f.write(str(ext_output))
+        f.write("\n")
 
 
     f.close()

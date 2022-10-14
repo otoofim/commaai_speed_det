@@ -24,8 +24,8 @@ class winterdata(Dataset):
         # self.samples_25.sort(key=lambda f: int(re.sub('\D', '', f)))
         # self.samples_25 = self.samples_25[:-4]
 
-        self.labels_23 = open(root_dir + "/veh_yaw_latt_23.txt").readlines()
-        self.labels_25 = open(root_dir + "/veh_yaw_latt_25.txt").readlines()[:-4]
+        self.labels_23 = open(root_dir + "/veh_yaw_latt_23.txt").readlines()[1:]
+        self.labels_25 = open(root_dir + "/veh_yaw_latt_25.txt").readlines()[1:-4]
 
         self.transform_in = transform_in
 
